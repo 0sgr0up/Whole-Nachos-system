@@ -17,30 +17,80 @@
 #include "synch.h"
 
 
-Semaphore** semaphore = new Semaphore*[100];	//semaphore array for chopsticks
-bool stickAvail[100];	//array of chopsticks
+Semaphore** semaphore;	//semaphore array for chopsticks
+bool* stickAvail;	//array of chopsticks
 int totPhil;		//the total amount of philosophers
 int totMeal;		//the total amount of meals
 int finished = 0;    //the philosophers done eating
+int entered = 0;
+int readyToEat = 0;
+int hereCheck = 0;
 
+
+
+
+
+
+void
+Entered()
+{
+ 
+    while(entered != totPhil){				//while somethreads are not here yet
+    	currentThread->Yield();			//yield for next philosopher to sit
+    }				
+
+}
+
+void
+ReadyToEat()
+{
+ 
+    while(readyToEat != totPhil){				//while somethreads are not here yet
+    	currentThread->Yield();			//yield for next philosopher to sit
+    }				
+
+}
+
+void
+Finished()
+{
+ 
+    while(finished != totPhil){				//while somethreads are not here yet
+    	currentThread->Yield();			//yield for next philosopher to sit
+    }				
+
+}
 
 void
 DinePhil2(int which)
 {
-    bool imDone = FALSE;		//boolean checks when all threads are out of while loop
+
     char* name = currentThread->getName();	//the name of the current thread
+    int left = which;
+    int right;
+
+    if (totPhil>1)
+       right = (which +1)%totPhil;
+    else  right = 1;
+
+    entered++;
+    Entered();
     printf("%s sits at the table\n", name);	//the philosopher sits at table
-    currentThread->Yield();			//yield for next philosopher to sit
+
+
+    readyToEat++;
+    ReadyToEat();
 
     while (totMeal>0){									//while meals left
-    	printf("%s is attempting to pick up chopstick %d on his left\n", name, which);
-	semaphore[which]->P();							//for chopstick on left
-	printf("%s successfully picks up chopstick %d on his left\n", name, which);
-	printf("%s is attempting to pick up chopstick %d on his right\n", name, (which +1)%totPhil);
-	(semaphore[(which+1)%totPhil])->P();					//for chopstick on right
-	printf("%s successfully picks up chopstick %d on his right\n", name, (which +1)%totPhil);
+    	printf("%s is attempting to pick up chopstick %d on his left\n", name, left);
+	semaphore[left]->P();							//for chopstick on left
+	printf("%s successfully picks up chopstick %d on his left\n", name, left);
+	printf("%s is attempting to pick up chopstick %d on his right\n", name, right);
+	if (totPhil>1)
+	    (semaphore[right])->P();		//for chopstick on right
+	printf("%s successfully picks up chopstick %d on his right\n", name, right);
 
-        int randVal = Random()%4 +2;				//generate randome value between 2 and 5
+        int randVal = Random()%4 +2;				//generate random value between 2 and 5
 
 	if (totMeal >0){					//if there still are meals left
 	    printf("%s is starting to eat\n", name);		//eat
@@ -51,10 +101,11 @@ DinePhil2(int which)
 	    printf("%s has finished eating\n", name);
 	}else printf("the food is finished :(\n");		//print if food is finished
 
-	printf("%s is putting chopstick %d down\n", name, which); //putting chopstick down
-	semaphore[which]->V();						//making resource available
-	printf("%s is putting chopstick %d down\n", name, (which+1)%totPhil);//putting chopstick down
-	(semaphore[(which+1)%totPhil])->V();				//putting chopstick down
+	printf("%s is putting chopstick %d down\n", name, left); //putting chopstick down
+	semaphore[left]->V();						//making resource available
+	printf("%s is putting chopstick %d down\n", name, right);//putting chopstick down
+	if (totPhil>1)
+	   (semaphore[right])->V();				//putting chopstick down
 
 	printf("%s is starting to think\n", name);		
 	randVal = Random()%4 +2;				//generate random value between 2 and 5
@@ -62,14 +113,9 @@ DinePhil2(int which)
 	    currentThread->Yield();				//thinking 
 	printf("%s is done thinking\n", name);
     }
+    finished++;
 
-    while(finished != totPhil){				//while somethreads are still in upper while loop
-        if(imDone != TRUE){		//loop and yield so that all threads can leave at the same time
-	    imDone = TRUE;
-            finished++;
-        }
-        currentThread->Yield();   
-    }
+    Finished();
     printf("%s leaves the table\n", name);
     currentThread->Yield();     
     currentThread->Finish();
@@ -80,58 +126,85 @@ DinePhil(int which)
 {
     bool left=FALSE;			//boolean to indicate left hand possession of chopstick
     bool  right = FALSE;		//boolean to indicate right hand possession of chopstick
-
+    int left1 = which;
+    int right1;
     char* name = currentThread->getName();	//name of current thread
-    bool imDone = FALSE;			//boolean to indicate readiness to leave the room
-    printf("%s sits at the table\n", name);	//philosopher sits at table
-    currentThread->Yield();			//yields for next philosopher to sit
+   // bool imHere = FALSE;			//boolean to indicate readiness to leave the room
+
+    if (totPhil<=1)
+	right1 = 1;
+    else right1 = (which+1)%totPhil;
+
+
+    entered++;
+    Entered();
+    printf("%s sits at the table\n", name);	//the philosopher sits at table
+
+
+    readyToEat++;
+    ReadyToEat();
+
+
     while (totMeal>0){				//while there are still meals...
 
 
-    	printf("%s is attempting to pick up chopstick %d on his left\n", name, which);
+    	printf("%s is attempting to pick up chopstick %d on his left\n", name, left1);
 
 	while (left != TRUE){				//while no left possession of chopstick...
 
-	    if (stickAvail[which]== TRUE){		//if chopstick is available...
-	    	stickAvail[which] = FALSE;		//pick it up, chopstick no longer available
+	    if (stickAvail[left1]== TRUE){		//if chopstick is available...
+	    	stickAvail[left1] = FALSE;		//pick it up, chopstick no longer available
 	    	left = TRUE;				//there is left possession
-	    	printf("%s successfully picks up chopstick %d on his left\n", name, which);
+	    	printf("%s successfully picks up chopstick %d on his left\n", name, left1);
 	    }else {
-		printf("%s was unsuccessful picking up chopstick %d\n", name, which);  
+		printf("%s was unsuccessful picking up chopstick %d\n", name, left1);  
 	        currentThread->Yield();		//if unable to pick, remain in loop, yield to next thread
 	    }
 	}
 
-    	printf("%s is attempting to pick up chopstick %d on his right\n", name, (which+1)%totPhil);
-	while (right != TRUE){				//while no right possession of chopstick...
-	    if (stickAvail[(which + 1)%totPhil]== TRUE){	//if chopstick is available...
-	    	stickAvail[(which+1)%totPhil] = FALSE;	//pick it up, chopstick no longer available
-	    	right = TRUE;				//there is right possession
-	    	printf("%s successfully picks up chopstick %d on his right\n", name, (which+1)%totPhil);
-	    }else {
-		printf("%s was unsuccessful picking up chopstick %d\n", name, (which+1)%totPhil);  
-	        currentThread->Yield();		//if unable to pick, remain in loop, yield to next thread
-            }
-	}
+    	printf("%s is attempting to pick up chopstick %d on his right\n", name, right1);
+	if(totPhil>1){
+	    while (right != TRUE){				//while no right possession of chopstick...
+	    	if (stickAvail[right1]== TRUE){	//if chopstick is available...
+
+	    	    stickAvail[right1] = FALSE;	//pick it up, chopstick no longer available
+	    	    right = TRUE;
+						//there is right possession
+	    	    printf("%s successfully picks up chopstick %d on his right\n", name, right1);
+	    	}else {
+		    printf("%s was unsuccessful picking up chopstick %d\n", name, right1);  
+	            currentThread->Yield();		//if unable to pick, remain in loop, yield to next thread
+                }
+	    }
+        }else printf("%s successfully picks up chopstick %d on his right\n", name, right1); 
 
         int randVal = Random()%4 +2;		//generate random variable
-
+	while (hereCheck>0){
+	    currentThread->Yield();		
+	}
+		//loop
+	hereCheck++;
 	if (totMeal >0){				//if a meal is available...
+	    totMeal--;
 	    printf("%s is starting to eat\n", name);	//eat
-	    totMeal--;					//reduce by 1
-	    printf("meal left: %d\n", totMeal);		
+	    
+	    printf("meal left: %d\n", totMeal);	
+	    hereCheck--;	
 	    for(int j = 0; j < randVal; j++)		
 	    	currentThread->Yield();			//eating
 	    printf("%s has finished eating\n", name);
 
 	    
-	}else printf("the food is finished :(\n");   //print if there's attempt to eat and no food available
-
-	printf("%s is putting chopstick %d down\n", name, which);
-	stickAvail[which] = TRUE;				//make left chopstick available again
+	}else {
+	    printf("%s can't eat because...\n the food is finished :(\n", name);//print if there's attempt to
+	    hereCheck--;
+	}							//eat and no food available
+	printf("%s is putting chopstick %d down\n", name, left1);
+	stickAvail[left1] = TRUE;				//make left chopstick available again
 	left = FALSE;						//left hand no longer possesses chopstick
-	printf("%s is putting chopstick %d down\n", name, (which+1)%totPhil);
-	stickAvail[(which+1)%totPhil] = TRUE;			//make right chopstick available again
+	printf("%s is putting chopstick %d down\n", name, right1);
+	if (totPhil>1)
+	    stickAvail[right1] = TRUE;			//make right chopstick available again
 	right = FALSE;						//right hand no longer possesses chopstick
 
 	printf("%s is starting to think\n", name);		//start to think
@@ -141,17 +214,15 @@ DinePhil(int which)
 	printf("%s is done thinking\n", name);
 	
     }
-    while(finished != totPhil){			//while some threads may still be in upper while loop...
-        if(imDone != TRUE){			//if out of while loop set imDone to true...
-	    imDone = TRUE;
-            finished++;				//increment the amount of done threads
-        }
-        currentThread->Yield();   		//yield to next thread
-    }						//everyone leaves the one after each other
+    finished++;
+
+    Finished();
     printf("%s leaves the table\n", name);
     currentThread->Yield();     
     currentThread->Finish();
 }
+
+
 ///End of code edit by Toks Ipaye
 
 //----------------------------------------------------------------------
@@ -186,6 +257,7 @@ CheckInput(int which)
 	bool hasDot = false;
 	bool isChar = false;
 	
+
 	for(int i = 1 ; input[i] != '\0'; i++){
 		char temps[1];
 		temps[0] = input[i];
@@ -197,16 +269,13 @@ CheckInput(int which)
 				hasDot = true;
 			else if(input[i] == '0')
 				continue;
-			else{
-				isDigit = false;
-				isChar = true;
-				break;
-			} 
+			     else{
+				   isDigit = false;
+				   isChar = true;
+				   break;
+			     } 
 		}
-		else {
-			//isDigit = true;
-			continue;
-		}
+
 
 	}
 	char *sign;
@@ -264,6 +333,13 @@ ShoutOutLoud(int which)
 // ThreadTest
 // 	Invoke a test routine.
 //----------------------------------------------------------------------
+bool
+InputCheck(char* entry)
+{
+
+     char* temp = entry;
+     while( *temp != '\0'
+}
 
 void
 ThreadTest()
@@ -315,6 +391,8 @@ ThreadTest()
 
 	}
 //toks Ipaye code edit starts
+
+
 	else if(CMD == 3 || CMD == 4 ){
 		printf("\nPlease enter number of Philosophers: ");
 		char phils[10];
@@ -338,8 +416,15 @@ ThreadTest()
 		char* what;				//variable for chopstick identification
 		totPhil = phil;				//setting number of total philosphers to global value
 		totMeal = meal;				//setting number of total meals to global value
-		for (int i = 0; i<phil; i++)
-			stickAvail[i] = 1;   //initializing chopsticks as available
+
+
+		if (CMD == 3){
+		    stickAvail = new bool[phil];
+		    for (int i = 0; i<phil; i++)
+			stickAvail[i] = TRUE;   //initializing chopsticks as available
+		}else if(CMD == 4){
+		    semaphore = new Semaphore*[phil];
+		}
 		if(phil && meal){
 			if (CMD == 3){				//Task 3
 				for(int i = 0; i < phil; i++){
@@ -364,7 +449,7 @@ ThreadTest()
 			}
 		}
 		else{
-			printf("\nYou have entered invalid value for number of thread or/and number of shouting each thread");
+			printf("\nYou have entered an invalid value");
 		}
 	}
 ///toks Ipaye code edits end
