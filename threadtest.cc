@@ -17,14 +17,15 @@
 #include "synch.h"
 
 
+
 Semaphore** semaphore;	//semaphore array for chopsticks
 bool* stickAvail;	//array of chopsticks
 int totPhil;		//the total amount of philosophers
 int totMeal;		//the total amount of meals
 int finished = 0;    //the philosophers done eating
-int entered = 0;
-int readyToEat = 0;
-int hereCheck = 0;
+int entered = 0;	//check to for entering
+int readyToEat = 0;	//check for seated
+int hereCheck = 0;	//check for accessing shared resource meal
 
 
 
@@ -32,13 +33,13 @@ int hereCheck = 0;
 
 
 void
-Entered()
+Entered(char* name)
 {
  
     while(entered != totPhil){				//while somethreads are not here yet
     	currentThread->Yield();			//yield for next philosopher to sit
     }				
-
+    printf("%s sits at the table\n", name);	//the philosopher sits at table
 }
 
 void
@@ -49,6 +50,120 @@ ReadyToEat()
     	currentThread->Yield();			//yield for next philosopher to sit
     }				
 
+}
+
+void
+Pick(char* name, char lOr, int whichHand, bool* possession)
+{
+ 
+    char* hand;
+
+    if (lOr == 'l')					//sets string for whether left or right
+        hand = "left";
+    else if (lOr == 'r')
+        hand = "right";
+
+
+    	printf("%s is attempting to pick up chopstick %d on his %s\n", name, whichHand, hand);
+	if(totPhil>1 || lOr != 'r'){
+	    while (*possession != TRUE){				//while no possession of chopstick...
+	    	if (stickAvail[whichHand]== TRUE){	//if chopstick is available...
+
+	    	    stickAvail[whichHand] = FALSE;	//pick it up, chopstick no longer available
+	    	    *possession = TRUE;
+						//there is possession
+	    	    printf("%s successfully picks up chopstick %d on his %s\n", name, whichHand, hand);
+	    	}else {
+		    printf("%s was unsuccessful picking up chopstick %d\n", name, whichHand);  
+	            currentThread->Yield();		//if unable to pick, remain in loop, yield to next thread
+                }
+	    }
+        }else printf("%s successfully picks up chopstick %d on his %s\n", name, whichHand, hand); //for the case of one philosopher and right hand
+}
+void
+PickS(char* name, char lOr, int whichHand)				//pick function for Semaphores
+{
+    char* hand;								//string for what hand
+
+    if (lOr == 'l')
+        hand = "left";							//setting hand
+    else if (lOr == 'r')
+        hand = "right";
+    printf("%s is attempting to pick up chopstick %d on his %s\n", name, whichHand, hand);
+    if (totPhil>1 || lOr != 'r')
+    	(semaphore[whichHand])->P();		//for chopstick on right
+    printf("%s successfully picks up chopstick %d on his %s\n", name, whichHand, hand);
+}
+
+void
+LetsEat(char* name, int meals)
+{
+    int randVal = Random()%4 +2;		//generate random variable
+    while (hereCheck>0){
+	currentThread->Yield();		
+    }
+		//loop
+    hereCheck++;
+    if (totMeal >0){				//if a meal is available...
+	totMeal--;
+	printf("%s is starting to eat\n", name);	//eat
+	    
+	printf("meal(s) eaten: %d\nmeal(s) left: %d\n", (meals - totMeal), totMeal);	
+	hereCheck--;	
+	for(int j = 0; j < randVal; j++)		
+	    currentThread->Yield();			//eating
+	printf("%s has finished eating\n", name);
+
+	    
+    }else {
+	printf("%s can't eat because...\n the food is finished :(\n", name);//print if there's attempt to...
+	hereCheck--;
+    }	
+										//...eat and no food available
+}
+void
+Drop(char* name, char lOr, int whichHand, bool* possession)
+{
+    char* hand;
+
+    if (lOr == 'l')
+        hand = "left";
+    else if (lOr == 'r')
+        hand = "right";
+	printf("%s is putting chopstick %d down\n", name, whichHand);
+	if (totPhil>1 || lOr != 'r')
+	    stickAvail[whichHand] = TRUE;			//make right chopstick available again
+	*possession = FALSE;						//right hand no longer possesses chopstick
+
+
+}
+
+void
+DropS(char* name, char lOr, int whichHand)
+{
+    char* hand;
+
+    if (lOr == 'l')
+        hand = "left";
+    else if (lOr == 'r')
+        hand = "right";
+
+	printf("%s is putting chopstick %d down\n", name, whichHand);//putting chopstick down
+	if (totPhil>1 || lOr != 'r')
+	   (semaphore[whichHand])->V();				//putting chopstick down
+
+
+}
+
+void
+Think(char* name)
+{
+	int randVal = Random()%4 +2; 			//generate random value between 2 and 5
+	printf("%s is starting to think\n", name);		
+					
+	for(int j = 0; j < randVal; j++)			
+	    currentThread->Yield();				//thinking 
+	printf("%s is done thinking\n", name);
 }
 
 void
@@ -68,50 +183,32 @@ DinePhil2(int which)
     char* name = currentThread->getName();	//the name of the current thread
     int left = which;
     int right;
+    int meals = totMeal;
 
     if (totPhil>1)
        right = (which +1)%totPhil;
     else  right = 1;
 
     entered++;
-    Entered();
-    printf("%s sits at the table\n", name);	//the philosopher sits at table
-
+    Entered(name);
 
     readyToEat++;
     ReadyToEat();
 
     while (totMeal>0){									//while meals left
-    	printf("%s is attempting to pick up chopstick %d on his left\n", name, left);
-	semaphore[left]->P();							//for chopstick on left
-	printf("%s successfully picks up chopstick %d on his left\n", name, left);
-	printf("%s is attempting to pick up chopstick %d on his right\n", name, right);
-	if (totPhil>1)
-	    (semaphore[right])->P();		//for chopstick on right
-	printf("%s successfully picks up chopstick %d on his right\n", name, right);
 
-        int randVal = Random()%4 +2;				//generate random value between 2 and 5
+	PickS(name, 'l', left);
+	PickS(name, 'r', right);
 
-	if (totMeal >0){					//if there still are meals left
-	    printf("%s is starting to eat\n", name);		//eat
-	    totMeal--;						//decrement meal quantity
-	    printf("meal left: %d\n", totMeal);
-	    for(int j = 0; j < randVal; j++)			
-	    	currentThread->Yield();				//eating
-	    printf("%s has finished eating\n", name);
-	}else printf("the food is finished :(\n");		//print if food is finished
 
-	printf("%s is putting chopstick %d down\n", name, left); //putting chopstick down
-	semaphore[left]->V();						//making resource available
-	printf("%s is putting chopstick %d down\n", name, right);//putting chopstick down
-	if (totPhil>1)
-	   (semaphore[right])->V();				//putting chopstick down
+	LetsEat(name, meals);
 
-	printf("%s is starting to think\n", name);		
-	randVal = Random()%4 +2;				//generate random value between 2 and 5
-	for(int j = 0; j < randVal; j++)			
-	    currentThread->Yield();				//thinking 
-	printf("%s is done thinking\n", name);
+	DropS(name, 'l', left);
+	DropS(name, 'r', right);
+
+	Think(name);
+
+
     }
     finished++;
 
@@ -121,6 +218,10 @@ DinePhil2(int which)
     currentThread->Finish();
 }
 
+//void UtilCheck(bool cond)
+//{
+//	while
+//}
 void
 DinePhil(int which)
 {
@@ -128,90 +229,32 @@ DinePhil(int which)
     bool  right = FALSE;		//boolean to indicate right hand possession of chopstick
     int left1 = which;
     int right1;
+    int meals = totMeal;
     char* name = currentThread->getName();	//name of current thread
-   // bool imHere = FALSE;			//boolean to indicate readiness to leave the room
+
 
     if (totPhil<=1)
 	right1 = 1;
     else right1 = (which+1)%totPhil;
 
-
     entered++;
-    Entered();
-    printf("%s sits at the table\n", name);	//the philosopher sits at table
-
+    Entered(name);
 
     readyToEat++;
     ReadyToEat();
 
-
     while (totMeal>0){				//while there are still meals...
 
 
-    	printf("%s is attempting to pick up chopstick %d on his left\n", name, left1);
+	Pick(name, 'l', left1, &left);
+	Pick(name, 'r', right1, &right);
 
-	while (left != TRUE){				//while no left possession of chopstick...
+	LetsEat(name, meals);							
 
-	    if (stickAvail[left1]== TRUE){		//if chopstick is available...
-	    	stickAvail[left1] = FALSE;		//pick it up, chopstick no longer available
-	    	left = TRUE;				//there is left possession
-	    	printf("%s successfully picks up chopstick %d on his left\n", name, left1);
-	    }else {
-		printf("%s was unsuccessful picking up chopstick %d\n", name, left1);  
-	        currentThread->Yield();		//if unable to pick, remain in loop, yield to next thread
-	    }
-	}
+	Drop(name, 'l', left1, &left);
+	Drop(name, 'r', right1, &right);
 
-    	printf("%s is attempting to pick up chopstick %d on his right\n", name, right1);
-	if(totPhil>1){
-	    while (right != TRUE){				//while no right possession of chopstick...
-	    	if (stickAvail[right1]== TRUE){	//if chopstick is available...
-
-	    	    stickAvail[right1] = FALSE;	//pick it up, chopstick no longer available
-	    	    right = TRUE;
-						//there is right possession
-	    	    printf("%s successfully picks up chopstick %d on his right\n", name, right1);
-	    	}else {
-		    printf("%s was unsuccessful picking up chopstick %d\n", name, right1);  
-	            currentThread->Yield();		//if unable to pick, remain in loop, yield to next thread
-                }
-	    }
-        }else printf("%s successfully picks up chopstick %d on his right\n", name, right1); 
-
-        int randVal = Random()%4 +2;		//generate random variable
-	while (hereCheck>0){
-	    currentThread->Yield();		
-	}
-		//loop
-	hereCheck++;
-	if (totMeal >0){				//if a meal is available...
-	    totMeal--;
-	    printf("%s is starting to eat\n", name);	//eat
-	    
-	    printf("meal left: %d\n", totMeal);	
-	    hereCheck--;	
-	    for(int j = 0; j < randVal; j++)		
-	    	currentThread->Yield();			//eating
-	    printf("%s has finished eating\n", name);
-
-	    
-	}else {
-	    printf("%s can't eat because...\n the food is finished :(\n", name);//print if there's attempt to
-	    hereCheck--;
-	}							//eat and no food available
-	printf("%s is putting chopstick %d down\n", name, left1);
-	stickAvail[left1] = TRUE;				//make left chopstick available again
-	left = FALSE;						//left hand no longer possesses chopstick
-	printf("%s is putting chopstick %d down\n", name, right1);
-	if (totPhil>1)
-	    stickAvail[right1] = TRUE;			//make right chopstick available again
-	right = FALSE;						//right hand no longer possesses chopstick
-
-	printf("%s is starting to think\n", name);		//start to think
-	randVal = Random()%4 +2;				//generate random value between 2 and 5
-	for(int j = 0; j < randVal; j++)
-	    currentThread->Yield();				//thinking
-	printf("%s is done thinking\n", name);
+	Think(name);
 	
     }
     finished++;
@@ -333,14 +376,56 @@ ShoutOutLoud(int which)
 // ThreadTest
 // 	Invoke a test routine.
 //----------------------------------------------------------------------
+
 bool
 InputCheck(char* entry)
 {
 
-     char* temp = entry;
-     while( *temp != '\0'
+    char* temp = entry;
+    if (atoi(temp) ==0)
+	return FALSE;
+    if (strlen(temp) < 1 || strlen(temp)>10)
+	return FALSE;
+    while( *temp != '\0'){
+	if (*temp < '0' || *temp > '9'){
+	    return FALSE;
+	}
+	temp++;
+    }
+	return TRUE;
 }
+void
+getString(char* result)
+{
+   int strlength = 12;
+ //  char result[strlength + 2];
+ //  result = results;
+ //  bool goodInput = FALSE;
+//   while(goodInput == FALSE){
+   	int index = 0;
+	char c = ' ';
+   	while( c != '\n' && index<=(strlength -2)){
+   	    c = getchar();
+	    *(result+index) = c;
+	    if(c == '\n')
+	    	*(result+index) = '\0';
+    	
+	    index++;
+   	}
 
+   	
+   	if (index >= strlength - 1){
+	*(result+index) = '\0';
+	    while(c != '\n'){
+	   	c = getchar();
+	    }	
+   	}else {
+ //          goodInput = TRUE;
+        }
+		
+  // }
+ 
+}
 void
 ThreadTest()
 {
@@ -354,18 +439,18 @@ ThreadTest()
 	else if(CMD ==2){
 		//printf("Bonjour and CMD = %d",CMD);
 		printf("\nPlease enter number of threads: ");
-		char num[10];
-		gets(num);
-		while(atoi(num)==0){
-			printf("\nIncorrect Input\nPlease enter number of threads: ");
-			gets(num);
+		char num[12];
+		getString(num);
+		while(!InputCheck(num)){
+			printf("\nInvalid Input\nPlease enter number of threads: ");
+			getString(num);
 		}
 		printf("\nPlease enter number of shout for each thread: ");
-		char shout[10];
-		gets(shout);
-		while(atoi(shout)==0){
-			printf("\nIncorrect Input\nPlease enter number of shout for each thread: ");
-			gets(shout);
+		char shout[12];
+		getString(shout);
+		while(!InputCheck(shout)){
+			printf("\nInvalid Input\nPlease enter number of shout for each thread: ");
+			getString(shout);
 		}
 		Thread *thread;// = new Thread("shouted thread");
 	
@@ -395,18 +480,18 @@ ThreadTest()
 
 	else if(CMD == 3 || CMD == 4 ){
 		printf("\nPlease enter number of Philosophers: ");
-		char phils[10];
-		gets(phils);						//get number of philosophers
-		while(atoi(phils)==0){					//check input
-			printf("\nIncorrect Input\nPlease enter number of Philosophers: ");//error & try again
-			gets(phils);					
+		char phils[12];
+		getString(phils);						//get number of philosophers
+		while(!InputCheck(phils)){					//check input
+			printf("\nInvalid Input\nPlease enter number of Philosophers: ");//error & try again
+			getString(phils);					
 		}
 		printf("\nPlease enter number of meals: ");
-		char meals[10];
-		gets(meals);						//get number of meals
-		while(atoi(meals)==0){					//check input
-			printf("\nIncorrect Input\nPlease enter number of meals: ");	//error & try again
-			gets(meals);
+		char meals[12];
+		getString(meals);						//get number of meals
+		while(!InputCheck(meals)){					//check input
+			printf("\nInvalid Input\nPlease enter number of meals: ");	//error & try again
+			getString(meals);
 		}
 		Thread *thread;				// = new Thread("shouted thread");
 	
@@ -451,7 +536,52 @@ ThreadTest()
 		else{
 			printf("\nYou have entered an invalid value");
 		}
-	}
+	}/* else if(CMD == 4 || CMD == 5 ){
+		printf("\nPlease enter number of People: ");
+		char P[10];
+		getString(P);						//get number of philosophers
+		while(!InputCheck(P)){					//check input
+			printf("\nIncorrect Input\nPlease enter number of People: ");//error & try again
+			getString(P);					
+		}
+		printf("\nPlease enter number for message capacity: ");
+		char S[10];
+		getString(S);						//get number of meals
+		while(!InputCheck(S)){					//check input
+			printf("\nIncorrect Input\nPlease enter number for message capacity: ");	//error & try again
+			getString(S);
+		}
+		printf("\nPlease enter number of messages to be sent: ");
+		char M[10];
+		getString(M);						//get number of philosophers
+		while(!InputCheck(M)){					//check input
+			printf("\nIncorrect Input\nPlease enter number of messages to be sent: ");//error & try again
+			getString(M);					
+		}
+		Thread *thread;// = new Thread("shouted thread");
+	
+		int P1 = atoi(P);
+		int S1 = atoi(S);
+		int M1 = atoi(M);
+		int ii = 1;
+		char * which;
+		if(T1 && S1 && M1){
+		//printf("%d %d",num1,shout1);
+			for(int i = 1; i <= num1; i++){
+				//printf("%s\n",a[i]);
+				which = new char[10];
+				sprintf(which, "Thread %d",ii);
+				ii++;
+		//		printf("%s\n",which);
+				thread = new Thread(which);	
+				thread->Fork(ShoutOutLoud,shout1);
+			}
+		}
+		else{
+			printf("\nYou have entered invalid value for number of thread or/and number of shouting each thread");
+		}	
+
+	}*/
 ///toks Ipaye code edits end
 }
 //End code changes by Hoang Pham
