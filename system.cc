@@ -99,43 +99,71 @@ Initialize(int argc, char **argv)
     int netname = 0;		// UNIX socket name
 #endif
     
+
+    int loop = 0;
+    if(argc < 3){
+	printf("insufficient arguments: expecting \".\\nachos -A (int)\"\n");
+	Cleanup();
+    }
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
 	argCount = 1;
-	if (!strcmp(*argv, "-d")) {
-	    if (argc == 1)
-		debugArgs = "+";	// turn on all debug flags
-	    else {
-	    	debugArgs = *(argv + 1);
+	
+	if (loop<1){
+	    if (!strcmp(*argv, "-d")){
+	        if (argc == 1)
+		     debugArgs = "+";	// turn on all debug flags
+	    	else{
+	    	 debugArgs = *(argv + 1);
+	    	 argCount = 2;
+	    	}
+	    }else if (!strcmp(*argv, "-rs")) {
+	    	ASSERT(argc > 1);
+	    	RandomInit(atoi(*(argv + 1)));	// initialize pseudo-random
+						// number generator
+	    	randomYield = TRUE;
 	    	argCount = 2;
 	    }
-	} else if (!strcmp(*argv, "-rs")) {
-	    ASSERT(argc > 1);
-	    RandomInit(atoi(*(argv + 1)));	// initialize pseudo-random
-						// number generator
-	    randomYield = TRUE;
-	    argCount = 2;
 	}
+	loop++;
+	if (loop ==1){
 	//Begin code changes by Hoang Pham
-	if(!strcmp(*argv, "-A")){
-		if(!strcmp(*(argv+1), "1")){
-			printf("Initializing task 1!");
-			CMD = 1;
-		}
-		else if(!strcmp(*(argv+1), "2")){
-			printf("Initializing task 2!");
-			CMD = 2;
-		}
+		if(!strcmp(*argv, "-A")){
+			if(!strcmp(*(argv+1), "1")){
+				printf("Initializing task 1!");
+				CMD = 1;
+			}
+			else if(!strcmp(*(argv+1), "2")){
+				printf("Initializing task 2!");
+				CMD = 2;
+			}
 	//code edit by Toks Ipaye
-		else if(!strcmp(*(argv+1), "3")){
-			printf("Initializing task 3!");
-			CMD = 3;
+			else if(!strcmp(*(argv+1), "3")){
+				printf("Initializing task 3!");
+				CMD = 3;
+			}
+			else if(!strcmp(*(argv+1), "4")){
+				printf("Initializing task 4!");
+				CMD = 4;
+			}
+			else if(!strcmp(*(argv+1), "5")){
+				printf("Initializing task 5!");
+				CMD = 5;
+			}
+			else if(!strcmp(*(argv+1), "6")){
+				printf("Initializing task 6!");
+				CMD = 6;
+			}else{
+				printf("Expecting arguments 1-6 after \"-A\"\n");
+				Cleanup();
+			}
+	
+		}else{
+			printf("Expecting leading argument \"-A\"\n");
+			Cleanup();
 		}
-		else if(!strcmp(*(argv+1), "4")){
-			printf("Initializing task 4!");
-			CMD = 4;
-		}
-	//end of edit by Toks Ipaye
 	}
+	//end of edit by Toks Ipaye
+
 	//End code changes by Hoang Pham
 #ifdef USER_PROGRAM
 	if (!strcmp(*argv, "-s"))

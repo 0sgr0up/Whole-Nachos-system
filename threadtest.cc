@@ -20,7 +20,7 @@
 
 Semaphore** semaphore;	//semaphore array for chopsticks
 bool* stickAvail;	//array of chopsticks
-int totPhil;		//the total amount of philosophers
+int totPeep;		//the total amount of philosophers/people
 int totMeal;		//the total amount of meals
 int finished = 0;    //the philosophers done eating
 int entered = 0;	//check to for entering
@@ -28,25 +28,61 @@ int readyToEat = 0;	//check for seated
 int hereCheck = 0;	//check for accessing shared resource meal
 
 
+int** mailBoxes;
+int totMess;
+
+/*
+void
+ReadMessage(int which)
+{
+    const char *a[8];
+    a[0] = "We are watching the Packers and Falcons game";
+    a[1] = "We are drinking rasperry sprite";
+    a[2] = "This is a shouting";
+    a[3] = "I like to talk to you";
+    a[4] = "This girl likes my dog";
+    a[5] = "Such a inspiration";
+    a[6] = "He is a billionaire nerd";
+    a[7] = "I will drive to visit you";
+
+    while(totMess>0){
+    	printf("Person %d reads message %s", which, mailbox[which][])
+    	currentThread->Yield();
+    }
+}
+
+void
+PostOffice( int which)
+{
+
+    char* name = currentThread->getName();	//the name of the current thread
+    entered++;
+    Entered(name);
+    ReadMessage(which);
 
 
-
-
+}
+*/
 void
 Entered(char* name)
 {
  
-    while(entered != totPhil){				//while somethreads are not here yet
+    while(entered != totPeep){				//while somethreads are not here yet
     	currentThread->Yield();			//yield for next philosopher to sit
-    }				
-    printf("%s sits at the table\n", name);	//the philosopher sits at table
+    }
+    switch(CMD){				
+    	case 3:
+	case 4: printf("%s sits at the table\n", name);	//the philosopher sits at table
+		break;
+	case 5: printf("%s enters the postoffice\n", name); //person enters postoffice
+    }
 }
 
 void
 ReadyToEat()
 {
  
-    while(readyToEat != totPhil){				//while somethreads are not here yet
+    while(readyToEat != totPeep){				//while somethreads are not here yet
     	currentThread->Yield();			//yield for next philosopher to sit
     }				
 
@@ -55,17 +91,15 @@ ReadyToEat()
 void
 Pick(char* name, char lOr, int whichHand, bool* possession)
 {
- 
-    char* hand;
+     char* hand;
 
     if (lOr == 'l')					//sets string for whether left or right
         hand = "left";
     else if (lOr == 'r')
         hand = "right";
 
-
     	printf("%s is attempting to pick up chopstick %d on his %s\n", name, whichHand, hand);
-	if(totPhil>1 || lOr != 'r'){
+	if(totPeep>1 || lOr != 'r'){
 	    while (*possession != TRUE){				//while no possession of chopstick...
 	    	if (stickAvail[whichHand]== TRUE){	//if chopstick is available...
 
@@ -90,7 +124,7 @@ PickS(char* name, char lOr, int whichHand)				//pick function for Semaphores
     else if (lOr == 'r')
         hand = "right";
     printf("%s is attempting to pick up chopstick %d on his %s\n", name, whichHand, hand);
-    if (totPhil>1 || lOr != 'r')
+    if (totPeep>1 || lOr != 'r')
     	(semaphore[whichHand])->P();		//for chopstick on right
     printf("%s successfully picks up chopstick %d on his %s\n", name, whichHand, hand);
 }
@@ -114,7 +148,6 @@ LetsEat(char* name, int meals)
 	    currentThread->Yield();			//eating
 	printf("%s has finished eating\n", name);
 
-	    
     }else {
 	printf("%s can't eat because...\n the food is finished :(\n", name);//print if there's attempt to...
 	hereCheck--;
@@ -131,7 +164,7 @@ Drop(char* name, char lOr, int whichHand, bool* possession)
     else if (lOr == 'r')
         hand = "right";
 	printf("%s is putting chopstick %d down\n", name, whichHand);
-	if (totPhil>1 || lOr != 'r')
+	if (totPeep>1 || lOr != 'r')
 	    stickAvail[whichHand] = TRUE;			//make right chopstick available again
 	*possession = FALSE;						//right hand no longer possesses chopstick
 
@@ -149,7 +182,7 @@ DropS(char* name, char lOr, int whichHand)
         hand = "right";
 
 	printf("%s is putting chopstick %d down\n", name, whichHand);//putting chopstick down
-	if (totPhil>1 || lOr != 'r')
+	if (totPeep>1 || lOr != 'r')
 	   (semaphore[whichHand])->V();				//putting chopstick down
 
 
@@ -170,7 +203,7 @@ void
 Finished()
 {
  
-    while(finished != totPhil){				//while somethreads are not here yet
+    while(finished != totPeep){				//while somethreads are not here yet
     	currentThread->Yield();			//yield for next philosopher to sit
     }				
 
@@ -185,8 +218,8 @@ DinePhil2(int which)
     int right;
     int meals = totMeal;
 
-    if (totPhil>1)
-       right = (which +1)%totPhil;
+    if (totPeep>1)
+       right = (which +1)%totPeep;
     else  right = 1;
 
     entered++;
@@ -218,10 +251,7 @@ DinePhil2(int which)
     currentThread->Finish();
 }
 
-//void UtilCheck(bool cond)
-//{
-//	while
-//}
+
 void
 DinePhil(int which)
 {
@@ -233,9 +263,9 @@ DinePhil(int which)
     char* name = currentThread->getName();	//name of current thread
 
 
-    if (totPhil<=1)
+    if (totPeep<=1)
 	right1 = 1;
-    else right1 = (which+1)%totPhil;
+    else right1 = (which+1)%totPeep;
 
     entered++;
     Entered(name);
@@ -456,15 +486,14 @@ ThreadTest()
 	
 		int num1 = atoi(num);
 		int shout1 = atoi(shout);
-		int ii = 1;
 		char * which;
 		if(num1 && shout1){
 		//printf("%d %d",num1,shout1);
 			for(int i = 1; i <= num1; i++){
 				//printf("%s\n",a[i]);
 				which = new char[10];
-				sprintf(which, "Thread %d",ii);
-				ii++;
+				sprintf(which, "Thread %d",i);
+				i++;
 		//		printf("%s\n",which);
 				thread = new Thread(which);	
 				thread->Fork(ShoutOutLoud,shout1);
@@ -499,7 +528,7 @@ ThreadTest()
 		int meal = atoi(meals);
 		char * which;				//variable for philospher identification
 		char* what;				//variable for chopstick identification
-		totPhil = phil;				//setting number of total philosphers to global value
+		totPeep = phil;				//setting number of total philosphers to global value
 		totMeal = meal;				//setting number of total meals to global value
 
 
@@ -536,45 +565,51 @@ ThreadTest()
 		else{
 			printf("\nYou have entered an invalid value");
 		}
-	}/* else if(CMD == 4 || CMD == 5 ){
+	}/*else if(CMD == 5 || CMD == 6 ){
 		printf("\nPlease enter number of People: ");
-		char P[10];
-		getString(P);						//get number of philosophers
-		while(!InputCheck(P)){					//check input
+		char people[10];
+		getString(people);						//get number of philosophers
+		while(!InputCheck(people)){					//check input
 			printf("\nIncorrect Input\nPlease enter number of People: ");//error & try again
-			getString(P);					
+			getString(people);					
 		}
 		printf("\nPlease enter number for message capacity: ");
-		char S[10];
-		getString(S);						//get number of meals
-		while(!InputCheck(S)){					//check input
+		char messCap[10];
+		getString(messCap);						//get number of meals
+		while(!InputCheck(messCap)){					//check input
 			printf("\nIncorrect Input\nPlease enter number for message capacity: ");	//error & try again
-			getString(S);
+			getString(messCap);
 		}
 		printf("\nPlease enter number of messages to be sent: ");
-		char M[10];
-		getString(M);						//get number of philosophers
-		while(!InputCheck(M)){					//check input
+		char toBeSent[10];
+		getString(toBeSent);						//get number of philosophers
+		while(!InputCheck(toBeSent)){					//check input
 			printf("\nIncorrect Input\nPlease enter number of messages to be sent: ");//error & try again
-			getString(M);					
+			getString(toBeSent);					
 		}
 		Thread *thread;// = new Thread("shouted thread");
 	
-		int P1 = atoi(P);
-		int S1 = atoi(S);
-		int M1 = atoi(M);
-		int ii = 1;
+		int people1 = atoi(people);
+		int messCap1 = atoi(messCap);
+		int toBeSent1 = atoi(toBeSent);
+//		int ii = 1;
+		totPeep = people1;
+		totMess = toBeSent1;
 		char * which;
-		if(T1 && S1 && M1){
+		
+		mailBoxes = new int[people1][messCap1];
+		if(people1 && messCap1 && toBeSent1){
 		//printf("%d %d",num1,shout1);
-			for(int i = 1; i <= num1; i++){
+			for(int i = 0; i < people1; i++){
 				//printf("%s\n",a[i]);
 				which = new char[10];
-				sprintf(which, "Thread %d",ii);
-				ii++;
+				sprintf(which, "Thread %d",i);
+				i++;
 		//		printf("%s\n",which);
+				for(int j = 0; j< messCap1; j++)
+					mailBoxes[i][j] = 11;
 				thread = new Thread(which);	
-				thread->Fork(ShoutOutLoud,shout1);
+				thread->Fork(ShoutOutLoud,i);
 			}
 		}
 		else{
