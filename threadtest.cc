@@ -12,13 +12,14 @@
 #include "copyright.h"
 #include "system.h"
 #include <string.h>
-
+//#include <stdio.h>
+//#include  <stdlib.h>
 //******code edit by Toks Ipaye
 #include "synch.h"
 
+#define EMPTY 11
 
-
-Semaphore** semaphore;	//semaphore array for chopsticks
+Semaphore** semaphore;	//semaphore array for chopsticks/mailboxes
 bool* stickAvail;	//array of chopsticks
 int totPeep;		//the total amount of philosophers/people
 int totMeal;		//the total amount of meals
@@ -29,55 +30,149 @@ int hereCheck = 0;	//check for accessing shared resource meal
 
 
 int** mailBoxes;
+//bool* inboxEmpty;
+//bool* inboxFull;
+int* nextRIndx;
+int* nextWIndx;
 int totMess;
+int messLeft;
+int totCap;
+
 
 /*
 void
-ReadMessage(int which)
+CheckInbox(int which)
 {
-    const char *a[8];
-    a[0] = "We are watching the Packers and Falcons game";
-    a[1] = "We are drinking rasperry sprite";
-    a[2] = "This is a shouting";
-    a[3] = "I like to talk to you";
-    a[4] = "This girl likes my dog";
-    a[5] = "Such a inspiration";
-    a[6] = "He is a billionaire nerd";
-    a[7] = "I will drive to visit you";
-
-    while(totMess>0){
-    	printf("Person %d reads message %s", which, mailbox[which][])
-    	currentThread->Yield();
+    for(i= 0; i<totCap; i++){
+	if(mailBoxes[which][i] == 11){
+	    inboxFullwhich] = FALSE;
+	    break;
+	}
     }
+    inboxFull[which] = TRUE;
+}
+*/
+
+void
+Message(int which, char op)
+{
+
+    int recipient;
+    int compMessage;
+    const char *a[10];
+    a[0] = "Que me cuentas?";
+    a[1] = "Bonjour!";
+    a[2] = "Asalam Alaykun";
+    a[3] = "Kedu";
+    a[4] = "Bawoni?";
+    a[5] = "Konichiwa!";
+    a[6] = "What's up?";
+    a[7] = "How far?";
+    a[8] = "Namaste!";
+    a[9] = "Ni Hao!";
+
+
+
+    if(op == 'R'){
+//	printf("i'm here\n");
+//	if(mailBoxes[which][nextRIndx[which]]!=11){
+	    semaphore[which]->P();
+	    if(mailBoxes[which][nextRIndx[which]]!=EMPTY){						//check again
+    	    	printf("Person %d reads message: \"%s\"\n", which, a[mailBoxes[which][nextRIndx[which]]]);
+       	    	mailBoxes[which][nextRIndx[which]] = EMPTY;
+	        nextRIndx[which] = nextRIndx[(which + 1)%totCap];
+	        semaphore[which]->V();
+
+        	    currentThread->Yield();
+	    }else semaphore[which]->V();
+
+//	}
+    }
+    else if(op == 'W'){
+	compMessage = Random()%10;
+	recipient = Random()%totPeep;
+
+	while(recipient == which){
+	    recipient = Random()%totPeep;	//recipient other than self
+	}
+	    printf("Person %d composes a message for Person %d\n", which, recipient);
+ 
+	while (mailBoxes[recipient][nextWIndx[recipient]] != EMPTY){
+	    currentThread->Yield();
+	    
+	}
+	semaphore[recipient]->P();
+	if(mailBoxes[recipient][nextWIndx[recipient]]==EMPTY){
+
+	    mailBoxes[recipient][nextWIndx[recipient]] = compMessage;
+	    if(messLeft>0){
+	    	nextWIndx[recipient] = nextWIndx[(recipient + 1)%totCap];
+	    	messLeft--;
+	        printf("Person %d sends \"%s\" to Person %d\n", which, a[compMessage],recipient);
+	        printf("Message(s) sent: %d\nMessage(s) left: %d\n", totMess - messLeft, messLeft);
+	    }else printf("Person %d can't send the message because total messages have been sent :(\n", which);
+
+
+
+	}
+	semaphore[recipient]->V();
+
+    }
+}
+void
+Leave(int which)
+{
+    printf("Person %d leaves the Post Office\n", which);
 }
 
 void
-PostOffice( int which)
+Wait(int which)
 {
-
-    char* name = currentThread->getName();	//the name of the current thread
-    entered++;
-    Entered(name);
-    ReadMessage(which);
-
-
+    int randTime = Random()%4 + 2;
+	for (int i = 0; i<randTime; i++)
+	    currentThread->Yield();
 }
-*/
+
+
 void
 Entered(char* name)
 {
  
-    while(entered != totPeep){				//while somethreads are not here yet
-    	currentThread->Yield();			//yield for next philosopher to sit
-    }
+
     switch(CMD){				
     	case 3:
-	case 4: printf("%s sits at the table\n", name);	//the philosopher sits at table
+	case 4: while(entered != totPeep){				//while somethreads are not here yet
+    	       	    currentThread->Yield();			//yield for next philosopher to sit
+    		}
+		printf("%s sits at the table\n", name);	//the philosopher sits at table
 		break;
-	case 5: printf("%s enters the postoffice\n", name); //person enters postoffice
+	case 5: printf("%s enters the Post Office\n", name); //person enters postoffice
     }
 }
+void
+PostOffice( int which)
+{
 
+//    bool hasEntered = FALSE;
+    char* name = currentThread->getName();	//the name of the current thread
+    while(totPeep >1 && (messLeft >0 || mailBoxes[which][nextRIndx[which]]!=EMPTY)){
+//	hasEntered = TRUE;
+    	Entered(name);
+    	while(mailBoxes[which][nextRIndx[which]]!=EMPTY)
+    	    Message(which,'R');
+	Message(which, 'W');
+	Leave(which);
+	printf("before wait, thread %d \n", which);
+	Wait(which);
+//	printf("after wait, thread %d\n", which);
+    }
+	finished++;
+	printf("Thread %d finishes\n", which);
+	if(totPeep<=1)
+	    printf("You sent me out here...\n ...with no one to send me mail...\n ...or read my mail :(\n\n");
+	printf("%d finished\n", finished);
+    currentThread->Finish();
+}
 void
 ReadyToEat()
 {
@@ -295,7 +390,35 @@ DinePhil(int which)
     currentThread->Finish();
 }
 
+void
+getString(char* result)			//function to get input
+{
+   int strlength = 12;   		//max input string lengh allowed is 10 
 
+   	int index = 0;
+	char c = ' ';
+   	while( c != '\n' && index<=(strlength -2)){
+   	    c = getchar();
+	    *(result+index) = c;
+	    if(c == '\n')
+	    	*(result+index) = '\0';
+    	
+	    index++;
+   	}
+
+   	
+   	if (index >= strlength - 1){
+	*(result+index) = '\0';
+	    while(c != '\n'){
+	   	c = getchar();
+	    }	
+   	}else {
+
+        }
+		
+  // }
+ 
+}
 ///End of code edit by Toks Ipaye
 
 //----------------------------------------------------------------------
@@ -321,9 +444,9 @@ SimpleThread(int which)
 void
 CheckInput(int which)
 {
-	char input[100];
+	char input[12];
 	printf("\nPlease enter your input: ");
-	gets(input);
+	getString(input);
 	printf("\nYou just entered: %s\n", input);
 	bool isDigit = true;
 //	bool isNeg = false;
@@ -424,50 +547,19 @@ InputCheck(char* entry)
     }
 	return TRUE;
 }
-void
-getString(char* result)
-{
-   int strlength = 12;
- //  char result[strlength + 2];
- //  result = results;
- //  bool goodInput = FALSE;
-//   while(goodInput == FALSE){
-   	int index = 0;
-	char c = ' ';
-   	while( c != '\n' && index<=(strlength -2)){
-   	    c = getchar();
-	    *(result+index) = c;
-	    if(c == '\n')
-	    	*(result+index) = '\0';
-    	
-	    index++;
-   	}
 
-   	
-   	if (index >= strlength - 1){
-	*(result+index) = '\0';
-	    while(c != '\n'){
-	   	c = getchar();
-	    }	
-   	}else {
- //          goodInput = TRUE;
-        }
-		
-  // }
- 
-}
 void
 ThreadTest()
 {
 	
     DEBUG('t', "Entering ThreadTest");
 	if(CMD == 1){ 
-		//printf("hola and CMD = %d", CMD);
+
 		Thread *t = new Thread("forked thread");
     		t->Fork(CheckInput,1);
 	}
 	else if(CMD ==2){
-		//printf("Bonjour and CMD = %d",CMD);
+
 		printf("\nPlease enter number of threads: ");
 		char num[12];
 		getString(num);
@@ -488,13 +580,13 @@ ThreadTest()
 		int shout1 = atoi(shout);
 		char * which;
 		if(num1 && shout1){
-		//printf("%d %d",num1,shout1);
+
 			for(int i = 1; i <= num1; i++){
-				//printf("%s\n",a[i]);
+
 				which = new char[10];
 				sprintf(which, "Thread %d",i);
 				i++;
-		//		printf("%s\n",which);
+	
 				thread = new Thread(which);	
 				thread->Fork(ShoutOutLoud,shout1);
 			}
@@ -565,26 +657,26 @@ ThreadTest()
 		else{
 			printf("\nYou have entered an invalid value");
 		}
-	}/*else if(CMD == 5 || CMD == 6 ){
+	}else if(CMD == 5 || CMD == 6 ){
 		printf("\nPlease enter number of People: ");
 		char people[10];
 		getString(people);						//get number of philosophers
 		while(!InputCheck(people)){					//check input
-			printf("\nIncorrect Input\nPlease enter number of People: ");//error & try again
+			printf("\nInvalid Input\nPlease enter number of People: ");//error & try again
 			getString(people);					
 		}
 		printf("\nPlease enter number for message capacity: ");
 		char messCap[10];
 		getString(messCap);						//get number of meals
 		while(!InputCheck(messCap)){					//check input
-			printf("\nIncorrect Input\nPlease enter number for message capacity: ");	//error & try again
+			printf("\nInvalid Input\nPlease enter number for mailbox capacity: ");	//error & try again
 			getString(messCap);
 		}
 		printf("\nPlease enter number of messages to be sent: ");
 		char toBeSent[10];
 		getString(toBeSent);						//get number of philosophers
 		while(!InputCheck(toBeSent)){					//check input
-			printf("\nIncorrect Input\nPlease enter number of messages to be sent: ");//error & try again
+			printf("\nInvalid Input\nPlease enter number of total messages to be sent: ");//error & try again
 			getString(toBeSent);					
 		}
 		Thread *thread;// = new Thread("shouted thread");
@@ -592,31 +684,56 @@ ThreadTest()
 		int people1 = atoi(people);
 		int messCap1 = atoi(messCap);
 		int toBeSent1 = atoi(toBeSent);
-//		int ii = 1;
+
 		totPeep = people1;
 		totMess = toBeSent1;
+		messLeft = toBeSent1;
+		totCap = messCap1;
 		char * which;
+		char* what;
 		
-		mailBoxes = new int[people1][messCap1];
+//		inboxEmpty = new bool[people1];
+//		inboxFull = new bool[people1];
+		nextRIndx = new int[people1];
+		nextWIndx = new int[people1];
+
+		mailBoxes = new int*[people1];
+    		semaphore = new Semaphore*[people1];
 		if(people1 && messCap1 && toBeSent1){
-		//printf("%d %d",num1,shout1);
+
+			for(int i = 0; i < people1; i++){
+				mailBoxes[i] = new int[messCap1];
+			}
+
 			for(int i = 0; i < people1; i++){
 				//printf("%s\n",a[i]);
+//				inboxEmpty[i] = TRUE;
+//				inboxFull[i] = FALSE;
+				nextRIndx[i] = 0;
+				nextWIndx[i] = 0;
+
+
 				which = new char[10];
+				what = new char[16];
+				sprintf(what, "Person %d's MB", i);
+				semaphore[i] = new Semaphore(what, 1);
 				sprintf(which, "Thread %d",i);
-				i++;
-		//		printf("%s\n",which);
-				for(int j = 0; j< messCap1; j++)
-					mailBoxes[i][j] = 11;
+
+				for(int j = 0; j< messCap1; j++){
+					mailBoxes[i][j] = EMPTY;
+
+				}
 				thread = new Thread(which);	
-				thread->Fork(ShoutOutLoud,i);
+
+				thread->Fork(PostOffice,i);
+
 			}
 		}
 		else{
-			printf("\nYou have entered invalid value for number of thread or/and number of shouting each thread");
+			printf("\nYou have entered invalid value");
 		}	
 
-	}*/
+	}
 ///toks Ipaye code edits end
 }
 //End code changes by Hoang Pham
