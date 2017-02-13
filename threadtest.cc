@@ -29,42 +29,29 @@ int readyToEat = 0;	//check for seated
 int hereCheck = 0;	//check for accessing shared resource meal
 
 
-int** mailBoxes;
-//bool* inboxEmpty;
-//bool* inboxFull;
-int* nextRIndx;
-int* nextWIndx;
-int totMess;
-int messLeft;
-int totCap;
+int** mailBoxes;	//pointer to 2D array representing mailboxes
+
+int* nextRIndx;		//next read index
+int* nextWIndx;		//next write index
+int totMess;		//total messages to be sent
+int messLeft;		//messages left to be sent
+int totCap;		//total capacity of mailbox
 
 
-/*
-void
-CheckInbox(int which)
-{
-    for(i= 0; i<totCap; i++){
-	if(mailBoxes[which][i] == 11){
-	    inboxFullwhich] = FALSE;
-	    break;
-	}
-    }
-    inboxFull[which] = TRUE;
-}
-*/
+
 
 void
-Message(int which, char op)
+Message(int which, char op)	//function for sending and receiving messages
 {
 
-    int recipient;
-    int compMessage;
-    const char *a[10];
+    int recipient;		//recipient variable
+    int compMessage;		//variable to pick message to compose
+    const char *a[10];		//array of messages
     a[0] = "Que me cuentas?";
     a[1] = "Bonjour!";
     a[2] = "Asalam Alaykun";
     a[3] = "Kedu";
-    a[4] = "Bawoni?";
+    a[4] = "Bawo ni?";
     a[5] = "Konichiwa!";
     a[6] = "What's up?";
     a[7] = "How far?";
@@ -73,69 +60,91 @@ Message(int which, char op)
 
 
 
-    if(op == 'R'){
-//	printf("i'm here\n");
-//	if(mailBoxes[which][nextRIndx[which]]!=11){
-	    semaphore[which]->P();
-	    if(mailBoxes[which][nextRIndx[which]]!=EMPTY){						//check again
-    	    	printf("Person %d reads message: \"%s\"\n", which, a[mailBoxes[which][nextRIndx[which]]]);
-       	    	mailBoxes[which][nextRIndx[which]] = EMPTY;
-	        nextRIndx[which] = nextRIndx[(which + 1)%totCap];
-	        semaphore[which]->V();
+    if(op == 'R'&& CMD == 5){						//read operation for Task 5
 
-        	    currentThread->Yield();
-	    }else semaphore[which]->V();
+        semaphore[which]->P();						//semaphore P operation due to impending access to mailbox
+        if(mailBoxes[which][nextRIndx[which]]!=EMPTY){						//check if empty slot exists
+       	    printf("Person %d reads message: \"%s\"\n", which, a[mailBoxes[which][nextRIndx[which]]]); //reading message
+    	    mailBoxes[which][nextRIndx[which]] = EMPTY;				//deleting read message
+            nextRIndx[which] = nextRIndx[(which + 1)%totCap];			//incrementing read index to next message if any
+            semaphore[which]->V();						//freeing up resource
+            currentThread->Yield();						//yielding 
+    	}else semaphore[which]->V();						//freeing up resource
 
-//	}
+
     }
-    else if(op == 'W'){
-	compMessage = Random()%10;
-	recipient = Random()%totPeep;
+    else if(op == 'W'&& CMD == 5){					//compose in mode 5
+	compMessage = Random()%10;					//random message
+	recipient = Random()%totPeep;					//random recipient
 
 	while(recipient == which){
 	    recipient = Random()%totPeep;	//recipient other than self
 	}
-	    printf("Person %d composes a message for Person %d\n", which, recipient);
+	printf("Person %d composes a message for Person %d\n", which, recipient); 	
  
-	while (mailBoxes[recipient][nextWIndx[recipient]] != EMPTY){
-	    currentThread->Yield();
-	    
+	while (mailBoxes[recipient][nextWIndx[recipient]] != EMPTY && messLeft>0){ //busy waiting loop: while recipient's mailbox is not empty and !total messages sent
+	    currentThread->Yield();							//yield
 	}
-	semaphore[recipient]->P();
-	if(mailBoxes[recipient][nextWIndx[recipient]]==EMPTY){
+	semaphore[recipient]->P();							//semaphore P operation due to wanting to access shared resource
+	if(mailBoxes[recipient][nextWIndx[recipient]]==EMPTY){				//check for room in recipient's mailbox
 
-	    mailBoxes[recipient][nextWIndx[recipient]] = compMessage;
+
 	    if(messLeft>0){
-	    	nextWIndx[recipient] = nextWIndx[(recipient + 1)%totCap];
-	    	messLeft--;
-	        printf("Person %d sends \"%s\" to Person %d\n", which, a[compMessage],recipient);
-	        printf("Message(s) sent: %d\nMessage(s) left: %d\n", totMess - messLeft, messLeft);
-	    }else printf("Person %d can't send the message because total messages have been sent :(\n", which);
-
-
-
+	    	mailBoxes[recipient][nextWIndx[recipient]] = compMessage;			//putting message in recipient's inbox
+	    	nextWIndx[recipient] = nextWIndx[(recipient + 1)%totCap];			//incrementing write index
+	    	messLeft--;									//decrementing total message
+	        printf("Person %d sends \"%s\" to Person %d\n", which, a[compMessage],recipient); //print for who message was sent to
+	        printf("Message(s) sent: %d\nMessage(s) left: %d\n", totMess - messLeft, messLeft);	//message left, message sent
+	    }else printf("Person %d can't send the message because total messages have been sent :(\n", which);	//print if total messages have been sent
 	}
-	semaphore[recipient]->V();
+	semaphore[recipient]->V();								//semaphore V operation
+    }
+    if(op == 'R'&& CMD == 6){									//read operations operations for Task 6
+        if(mailBoxes[which][nextRIndx[which]]!=EMPTY){						//check for recipient's 
+       	    printf("Person %d reads message: \"%s\"\n", which, a[mailBoxes[which][nextRIndx[which]]]);	//reading message
+    	    mailBoxes[which][nextRIndx[which]] = EMPTY;							//deleting read message
+            nextRIndx[which] = nextRIndx[(which + 1)%totCap];						//incrementing read index
+            semaphore[which]->V();									//freeing up resource
+            currentThread->Yield();									//yielding to next thread on CPU cue
+	}
+    }else if(op == 'W'&& CMD == 6){								//write operation for Task 6
+	compMessage = Random()%10;								//random message to be composed
+	recipient = Random()%totPeep;								//random recipient
+
+	while(recipient == which){
+	    recipient = Random()%totPeep;							//recipient other than self
+	}
+
+	printf("Person %d composes a message for Person %d\n", which, recipient);
+
+	semaphore[recipient]->P();							//semaphore P operation due to wanting to access shared resource
+	    if(messLeft>0){
+	    	mailBoxes[recipient][nextWIndx[recipient]] = compMessage;			//putting message in recipient's inbox
+	    	nextWIndx[recipient] = nextWIndx[(recipient + 1)%totCap];			//incrementing write index
+	    	messLeft--;									//decrementing total message
+	        printf("Person %d sends \"%s\" to Person %d\n", which, a[compMessage],recipient); //print for who message was sent to
+	        printf("Message(s) sent: %d\nMessage(s) left: %d\n", totMess - messLeft, messLeft);	//message left, message sent
+	    }else printf("Person %d can't send the message because total messages have been sent :(\n", which);	//print if total messages have been sent
 
     }
 }
 void
-Leave(int which)
+Leave(int which)										//leave function
 {
-    printf("Person %d leaves the Post Office\n", which);
+    printf("Person %d leaves the Post Office\n", which);					
 }
 
 void
-Wait(int which)
+Wait(int which)											//wait function
 {
-    int randTime = Random()%4 + 2;
+    int randTime = Random()%4 + 2;						//wait for 2 to 5 cycles
 	for (int i = 0; i<randTime; i++)
 	    currentThread->Yield();
 }
 
 
 void
-Entered(char* name)
+Entered(char* name)						//shared Entered function
 {
  
 
@@ -146,31 +155,49 @@ Entered(char* name)
     		}
 		printf("%s sits at the table\n", name);	//the philosopher sits at table
 		break;
-	case 5: printf("%s enters the Post Office\n", name); //person enters postoffice
+	case 5:
+	case 6: printf("%s enters the Post Office\n", name); //person enters postoffice
     }
+}
+void
+PostOffice2(int which)							//second post office function
+{
+    char* name = currentThread->getName();				//get thread name
+    while (totPeep >1 && (messLeft >0 || mailBoxes[which][nextRIndx[which]]!=EMPTY)){	//while messages left or inbox contains messages
+    	Entered(name);							//enter
+    	while(mailBoxes[which][nextRIndx[which]]!=EMPTY)		//while message in mailbox
+    	    Message(which,'R');						//read message
+	Message(which, 'W');						//or else write message
+	Leave(which);							//leave
+	Wait(which);							//wait for some cycles
+    }
+    finished++;
+    printf("Thread %d finishes\n", which);
+    if(totPeep<=1)
+	printf("You sent me out here...\n ...with no mail to read...\n ...and no one to send mail to :(\n\n");
+    printf("%d finished\n", finished);
+    currentThread->Finish();
 }
 void
 PostOffice( int which)
 {
 
-//    bool hasEntered = FALSE;
+
     char* name = currentThread->getName();	//the name of the current thread
-    while(totPeep >1 && (messLeft >0 || mailBoxes[which][nextRIndx[which]]!=EMPTY)){
-//	hasEntered = TRUE;
-    	Entered(name);
-    	while(mailBoxes[which][nextRIndx[which]]!=EMPTY)
-    	    Message(which,'R');
-	Message(which, 'W');
-	Leave(which);
-	printf("before wait, thread %d \n", which);
-	Wait(which);
-//	printf("after wait, thread %d\n", which);
+    while(totPeep >1 && (messLeft >0 || mailBoxes[which][nextRIndx[which]]!=EMPTY)){ //while messages left or mailbox contains messages
+
+    	Entered(name);							//enter
+    	while(mailBoxes[which][nextRIndx[which]]!=EMPTY)		//while message left in mailbox
+    	    Message(which,'R');						//read message
+	Message(which, 'W');						//or else write message
+	Leave(which);							//leave			
+	Wait(which);							//wait for some cycles
     }
-	finished++;
-	printf("Thread %d finishes\n", which);
-	if(totPeep<=1)
-	    printf("You sent me out here...\n ...with no one to send me mail...\n ...or read my mail :(\n\n");
-	printf("%d finished\n", finished);
+    finished++;
+    printf("Thread %d finishes\n", which);
+    if(totPeep<=1)
+	printf("You sent me out here...\n ...with no one to send me mail...\n ...or read my mail :(\n\n");
+    printf("%d finished\n", finished);
     currentThread->Finish();
 }
 void
@@ -186,7 +213,7 @@ ReadyToEat()
 void
 Pick(char* name, char lOr, int whichHand, bool* possession)
 {
-     char* hand;
+     char* hand;					//string for what hand
 
     if (lOr == 'l')					//sets string for whether left or right
         hand = "left";
@@ -309,36 +336,36 @@ DinePhil2(int which)
 {
 
     char* name = currentThread->getName();	//the name of the current thread
-    int left = which;
-    int right;
-    int meals = totMeal;
+    int left = which;				//left matches the philosopher #
+    int right;					//variable for right hand
+    int meals = totMeal;			//setting meals to total meal
 
-    if (totPeep>1)
-       right = (which +1)%totPeep;
-    else  right = 1;
+    if (totPeep>1)				//if more than 1 person
+       right = (which +1)%totPeep;		//right is next 1
+    else  right = 1;				//else simulate right
 
-    entered++;
-    Entered(name);
+    entered++;					//counting the amount that have entered
+    Entered(name);				//Seating philosophers
 
-    readyToEat++;
+    readyToEat++;				//counting the philosophers that are ready to eat
     ReadyToEat();
 
-    while (totMeal>0){									//while meals left
+    while (totMeal>0){				//while meals left
 
-	PickS(name, 'l', left);
-	PickS(name, 'r', right);
+	PickS(name, 'l', left);			//pick left chopstick
+	PickS(name, 'r', right);		//pick right chopstick
 
 
-	LetsEat(name, meals);
+	LetsEat(name, meals);			//eat function
 
-	DropS(name, 'l', left);
-	DropS(name, 'r', right);
+	DropS(name, 'l', left);			//drop left chopstick
+	DropS(name, 'r', right);		//drop right chopstick
 
-	Think(name);
+	Think(name);				//philosopher think
 
 
     }
-    finished++;
+    finished++;					//amount of philosopher finished
 
     Finished();
     printf("%s leaves the table\n", name);
@@ -419,7 +446,7 @@ getString(char* result)			//function to get input
   // }
  
 }
-///End of code edit by Toks Ipaye
+///**************End of code edit by Toks Ipaye
 
 //----------------------------------------------------------------------
 // SimpleThread
@@ -535,8 +562,8 @@ InputCheck(char* entry)
 {
 
     char* temp = entry;
-    if (atoi(temp) ==0)
-	return FALSE;
+ //   if (atoi(temp) ==0)
+//	return FALSE;
     if (strlen(temp) < 1 || strlen(temp)>10)
 	return FALSE;
     while( *temp != '\0'){
@@ -631,31 +658,31 @@ ThreadTest()
 		}else if(CMD == 4){
 		    semaphore = new Semaphore*[phil];
 		}
-		if(phil && meal){
+		if(phil){
 			if (CMD == 3){				//Task 3
 				for(int i = 0; i < phil; i++){
-					which = new char[15];
+					which = new char[15];			//variable to store name
 					sprintf(which, "Philosopher %d",i);//saving string into variable "which"
 				
-					printf("%s enters the room\n",which);
-					thread = new Thread(which);	
-					thread->Fork(DinePhil,i);
+					printf("%s enters the room\n",which);	//as they enter room
+					thread = new Thread(which);		//initializing philosopher threads
+					thread->Fork(DinePhil,i);		//forking thread
 				}
-			}else if(CMD == 4){
+			}else if(CMD == 4){			//Task 4
 				for(int i = 0; i < phil; i++){
-					which = new char[15];
-					what = new char[14];
-					sprintf(which, "Philosopher %d",i);
-					sprintf(what, " Chopstick %d", i);
-					semaphore[i] = new Semaphore(what, 1);
-					printf("%s enters the room\n",which);
-					thread = new Thread(which);	
-					thread->Fork(DinePhil2,i);
+					which = new char[15];			//variable to store philosopher name
+					what = new char[14];			//varaiable to store chopstick name
+					sprintf(which, "Philosopher %d",i);	//concenating Philosopher string to number
+					sprintf(what, " Chopstick %d", i);	//concanating Chopstick string to number
+					semaphore[i] = new Semaphore(what, 1);	//initializing semaphore arrat to represent chopstick
+					printf("%s enters the room\n",which);	//philosopher enters room
+					thread = new Thread(which);		//actual thread being initialized representing philosopher
+					thread->Fork(DinePhil2,i);		//forking thread to appropriate function
 				}
 			}
 		}
 		else{
-			printf("\nYou have entered an invalid value");
+			printf("\nThere were no Philosophers\n");		//if 
 		}
 	}else if(CMD == 5 || CMD == 6 ){
 		printf("\nPlease enter number of People: ");
@@ -666,7 +693,7 @@ ThreadTest()
 			getString(people);					
 		}
 		printf("\nPlease enter number for message capacity: ");
-		char messCap[10];
+		char messCap[10];						
 		getString(messCap);						//get number of meals
 		while(!InputCheck(messCap)){					//check input
 			printf("\nInvalid Input\nPlease enter number for mailbox capacity: ");	//error & try again
@@ -691,46 +718,50 @@ ThreadTest()
 		totCap = messCap1;
 		char * which;
 		char* what;
+		int semVal;
 		
-//		inboxEmpty = new bool[people1];
-//		inboxFull = new bool[people1];
+;
 		nextRIndx = new int[people1];
 		nextWIndx = new int[people1];
 
 		mailBoxes = new int*[people1];
     		semaphore = new Semaphore*[people1];
-		if(people1 && messCap1 && toBeSent1){
+		if(people1 && messCap1){
 
 			for(int i = 0; i < people1; i++){
 				mailBoxes[i] = new int[messCap1];
 			}
 
 			for(int i = 0; i < people1; i++){
-				//printf("%s\n",a[i]);
-//				inboxEmpty[i] = TRUE;
-//				inboxFull[i] = FALSE;
+
 				nextRIndx[i] = 0;
 				nextWIndx[i] = 0;
 
 
-				which = new char[10];
-				what = new char[16];
+				which = new char[14];
+				what = new char[20];
 				sprintf(what, "Person %d's MB", i);
-				semaphore[i] = new Semaphore(what, 1);
-				sprintf(which, "Thread %d",i);
+				if(CMD==5)
+				    semVal = 1;
+				else if(CMD == 6)
+				    semVal = messCap1;
+				semaphore[i] = new Semaphore(what, semVal);
+				sprintf(which, "Person %d",i);
 
 				for(int j = 0; j< messCap1; j++){
 					mailBoxes[i][j] = EMPTY;
 
 				}
 				thread = new Thread(which);	
-
-				thread->Fork(PostOffice,i);
+				if (CMD==5)
+				    thread->Fork(PostOffice,i);
+				else if(CMD==6)
+				    thread->Fork(PostOffice2, i);
 
 			}
 		}
 		else{
-			printf("\nYou have entered invalid value");
+			printf("\nFor any action to ensue, we need a value other than zero for # of people\nand mailbox capacity\n\n");
 		}	
 
 	}
