@@ -102,7 +102,7 @@ Initialize(int argc, char **argv)
 
     int loop = 0;
     if(argc < 3){
-	printf("insufficient arguments: expecting \".\\nachos -A (int)\"\n");
+	printf("insufficient arguments: expecting \"./nachos -A (int)\"\n");
 	Cleanup();
     }
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
@@ -128,6 +128,17 @@ Initialize(int argc, char **argv)
 	if (loop ==1){
 	//Begin code changes by Hoang Pham
 		if(!strcmp(*argv, "-A")){
+	//suspend code changes by Hoang Pham
+	//begin code changes by Toks Ipaye
+
+		    if (argc > 2){
+			if(strcmp(*(argv+2), "-rs")){
+			    printf("you've entered some invalid input as argument");
+			    Cleanup();
+			}
+		    }
+	//suspend code changes by Toks Ipaye
+	//code changes by Hoang Pham
 			if(!strcmp(*(argv+1), "1")){
 				printf("Initializing task 1!");
 				CMD = 1;
