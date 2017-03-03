@@ -1,0 +1,43 @@
+Task 1
+1.Fortunately in Task 1 we did not run into any deadlock issues in Verson 1 or Version 2 of our Project.
+
+2.
+			Philosophers	Meals	Ticks	
+	rs 3535	Test 1	3		3	487
+	rs 8321 Test 2	17		7	1662
+	rs 3214	Test 3	12		45	5658
+
+
+Task 2
+1.			Philosophers	Meals	Ticks(semaphore)
+	rs 3535	Test 1	3		3	626
+	rs 8321	Test 2	17		7	2213
+	rs 3214	Test 3	12		45	6252
+
+2. If the current thread is yielded on the task 2 between picking up the left and right chopstick all philosophers sit down, pick up left chopstick, and then they all also pick up the right chopstick somehow. If the same yield is inserted into task 1 we end up with a deadlock situation.
+
+Task 3
+1. Our group did 2 complete versions of project 2. In one version we made a loop so that if a person tries to send a message to another person 5 times and their mailbox is full all 5 times then they send the message to another person because the deadlock that we had in this version was caused by waiting for a mailbox to have space. The other version I am not familiar with.
+
+Task 4
+1. In version 1 of Project 2 we had the same exact deadlock problem because some of the same functions were being used so the solution was the same as in Task 3.
+
+Task 6
+1. 
+
+2. In task 1 we used an array of booleans for chopsticks.
+
+   In task 2 we used an array of semaphores to control access to chopsticks.
+   The algorithm contained mostly while loops and for loops.
+
+   In task 3 we used a 2 dimensional array for mailboxes, the first row      	contained the name of the person and all other memory spaces on each      	column contained the messages for that person.
+
+   In task 4 the 2 dimensional array was used again and structured the same 
+   way but there was also an array of semaphores to control access to the 
+   messages in the mailbox. In this task there was a problem with deadlock  
+   so we used a for loop that made the sender send the message to another 
+   person if the sender tried to send the message to a recipient 5 times and
+   the recipient's mailbox was full every time.
+
+   
+
